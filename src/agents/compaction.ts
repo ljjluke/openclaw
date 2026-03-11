@@ -6,6 +6,7 @@ import { retryAsync } from "../infra/retry.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { DEFAULT_CONTEXT_TOKENS } from "./defaults.js";
 import { repairToolUseResultPairing, stripToolResultDetails } from "./session-transcript-repair.js";
+import { compressToolDescription } from "./cost-optimization-config.js";
 
 const log = createSubsystemLogger("compaction");
 
@@ -461,4 +462,105 @@ export function pruneHistoryForContextShare(params: {
 
 export function resolveContextWindowTokens(model?: ExtensionContext["model"]): number {
   return Math.max(1, Math.floor(model?.contextWindow ?? DEFAULT_CONTEXT_TOKENS));
+}
+
+/**
+ * Compresses tool descriptions in message content to reduce token usage.
+ * This function scans messages for tool definitions and compresses their descriptions.
+ * 
+ * @param messages - Array of agent messages potentially containing tool schemas
+ * @param config - Optional configuration for compression behavior
+ * @returns Messages with compressed tool descriptions
+ */
+export function compressToolsInMessages(
+  messages: AgentMessage[],
+  config?: {
+    /** Enable compression (default: true) */
+    enabled?: boolean;
+    /** Use predefined mappings (default: true) */
+    useMappings?: boolean;
+    /** Apply pattern-based shortening (default: true) */
+    usePatterns?: boolean;
+    /** Maximum description length, 0 = no limit (default: 200) */
+    maxLength?: number;
+  },
+): AgentMessage[] {
+  const enabled = config?.enabled ?? true;
+  if (!enabled) {
+    return messages;
+  }
+
+  return messages.map((msg) => {
+    const content = (msg as { content?: unknown }).content;
+    
+    // Handle string content
+    if (typeof content === "string") {
+      const compressed = compressToolDescriptionsInText(content, {
+        useMappings: config?.useMappings,
+        usePatterns: config?.usePatterns,
+        maxLength: config?.maxLength,
+      });
+      return { ...msg, content: compressed };
+    }
+    
+    // Handle array content (e.g., Anthropic message blocks)
+    if (Array.isArray(content)) {
+      const compressedContent = content.map((block) => {
+        if (!block || typeof block !== "object") {
+          return block;
+        }
+        
+        // Handle text blocks
+        const text = (block as { text?: unknown }).text;
+        if (typeof text === "string") {
+          const compressed = compressToolDescriptionsInText(text, {
+            useMappings: config?.useMappings,
+            usePatterns: config?.usePatterns,
+            maxLength: config?.maxLength,
+          });
+          return { ...block, text: compressed };
+        }
+        
+        return block;
+      });
+      return { ...msg, content: compressedContent };
+    }
+    
+    return msg;
+  });
+}
+
+/**
+ * Compresses tool descriptions in text content
+ */
+function compressToolDescriptionsInText(
+  text: string,
+  config?: {
+    useMappings?: boolean;
+    usePatterns?: boolean;
+    maxLength?: number;
+  },
+): string {
+  let compressed = text;
+  
+  // Pattern to match tool definitions in various formats
+  // Matches: "toolname: description", "tool_name - description", etc.
+  const toolDefPattern = /(\b[A-Za-z][A-Za-z0-9_-]*\b)\s*[:\-–—]\s*([^\n]{20,})/g;
+  
+  compressed = compressed.replace(toolDefPattern, (match, toolName, description) => {
+    // Skip if it doesn't look like a tool definition
+    if (description.length < 20 || description.length > 2000) {
+      return match;
+    }
+    
+    // Try to compress using predefined mapping
+    const mapped = compressToolDescription(toolName, description);
+    if (mapped !== description) {
+      return `${toolName}: ${mapped}`;
+    }
+    
+    return match;
+  });
+  
+  return compressed;
 }
