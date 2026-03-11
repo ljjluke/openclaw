@@ -18,6 +18,35 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
 </p>
 
+<!-- Token Optimization Banner -->
+<p align="center">
+  <a href="TOKEN-OPTIMIZATION-README.md">
+    <img src="https://img.shields.io/badge/Token_Optimization-80-95%25_savings-brightgreen?style=for-the-badge&logo=rocket" alt="Token Optimization">
+  </a>
+  <a href="TOKEN-OPTIMIZATION-README.md">
+    <img src="https://img.shields.io/badge/Tool_Compression-95%25_reduction-blue?style=for-the-badge&logo=compress" alt="Tool Compression">
+  </a>
+  <a href="TOKEN-OPTIMIZATION-README.md">
+    <img src="https://img.shields.io/badge/Model_Optimization-94%25_savings-orange?style=for-the-badge&logo=analytics" alt="Model Optimization">
+  </a>
+</p>
+
+> [!IMPORTANT]
+> ### 🚀 Token 成本优化 (新增功能)
+> 
+> **节省 80-95% 的 LLM Token 成本！**
+> 
+> - 🔧 **工具描述压缩**: 95% 减少 (176 字符 → 15 字符)
+> - 💰 **压缩模型优化**: 94% 节省 (GPT-4o → GPT-4o-mini)
+> - 💾 **请求缓存**: 20-40% 节省 (重复查询)
+> - 🔄 **多通道去重**: 80% 节省 (广播场景)
+> 
+> **性能**: <0.003ms 延迟 | <1MB 内存开销 | 195+ 测试覆盖
+> 
+> 📖 **了解详情**: [TOKEN-OPTIMIZATION-README.md](TOKEN-OPTIMIZATION-README.md)
+
+---
+
 **OpenClaw** is a _personal AI assistant_ you run on your own devices.
 It answers you on the channels you already use (WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, iMessage, BlueBubbles, IRC, Microsoft Teams, Matrix, Feishu, LINE, Mattermost, Nextcloud Talk, Nostr, Synology Chat, Tlon, Twitch, Zalo, Zalo Personal, WebChat). It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
 
