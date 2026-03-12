@@ -71,6 +71,7 @@ import {
   compactWithSafetyTimeout,
   EMBEDDED_COMPACTION_TIMEOUT_MS,
 } from "./compaction-safety-timeout.js";
+import { compressToolsInMessages } from "../compaction.js";
 import { buildEmbeddedExtensionFactories } from "./extensions.js";
 import {
   logToolSchemasForGoogle,
@@ -415,10 +416,42 @@ export async function compactEmbeddedPiSessionDirect(
       modelContextWindow: model.contextWindow,
       defaultTokens: DEFAULT_CONTEXT_TOKENS,
     });
-    const effectiveModel =
+    
+    // Apply compaction model override for cost optimization
+    const compactionModelOverride = params.config?.agents?.defaults?.compaction?.model;
+    let effectiveModel =
       ctxInfo.tokens < (model.contextWindow ?? Infinity)
         ? { ...model, contextWindow: ctxInfo.tokens }
         : model;
+    
+    // Use configured compaction model if available and different from current
+    if (compactionModelOverride && params.trigger === "overflow") {
+      const [overrideProvider, overrideModelId] = compactionModelOverride.split('/');
+      if (overrideProvider && overrideModelId) {
+        try {
+          const { model: compactionModel } = resolveModel(
+            overrideProvider,
+            overrideModelId,
+            agentDir,
+            params.config,
+          );
+          effectiveModel = {
+            ...compactionModel,
+            contextWindow: ctxInfo.tokens,
+          };
+          log.debug(
+            `[cost-optimization] using compaction model: ${compactionModelOverride}`,
+          );
+        } catch (err) {
+          log.warn(
+            `failed to resolve compaction model "${compactionModelOverride}", using default`,
+            {
+              errorMessage: err instanceof Error ? err.message : String(err),
+            },
+          );
+        }
+      }
+    }
 
     const runAbortController = new AbortController();
     const toolsRaw = createOpenClawCodingTools({
@@ -785,6 +818,27 @@ export async function compactEmbeddedPiSessionDirect(
             compacted: false,
             reason: "no real conversation messages",
           };
+        }
+
+        // Apply tool description compression before compaction (cost optimization)
+        const toolCompressionEnabled = params.config?.agents?.defaults?.compaction?.toolCompression ?? true;
+        if (toolCompressionEnabled) {
+          try {
+            const preCompressionMessageCount = session.messages.length;
+            session.messages = compressToolsInMessages(session.messages, {
+              enabled: true,
+              useMappings: true,
+              usePatterns: true,
+              maxLength: 200,
+            });
+            log.debug(
+              `[tool-compression] compressed tool descriptions in ${preCompressionMessageCount} messages`,
+            );
+          } catch (err) {
+            log.warn("tool description compression failed, continuing without compression", {
+              errorMessage: err instanceof Error ? err.message : String(err),
+            });
+          }
         }
 
         const compactStartedAt = Date.now();

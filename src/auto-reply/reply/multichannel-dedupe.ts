@@ -13,9 +13,9 @@
  * @license MIT
  */
 
-import { createDedupeCache, type DedupeCache } from "../infra/dedupe.js";
-import { simpleHash, normalizeMessagesForComparison } from "../agents/cost-optimization-config.js";
-import { createSubsystemLogger } from "../logging/subsystem.js";
+import { createDedupeCache, type DedupeCache } from "../../infra/dedupe.js";
+import { simpleHash, normalizeMessagesForComparison } from "../../agents/cost-optimization-config.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 
 const log = createSubsystemLogger("multichannel-dedupe");
 

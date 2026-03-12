@@ -13,8 +13,7 @@ import {
   TOOL_DESCRIPTION_MAP,
   DESCRIPTION_PATTERNS_TO_SHORTEN,
   TOOL_COMPRESSION_CONFIG,
-  normalizeMessagesForComparison,
-} from "../cost-optimization-config.js";
+} from "./cost-optimization-config.js";
 
 describe("cost-optimization-config - 完整路径测试", () => {
   describe("compressToolDescription - 所有路径覆盖", () => {

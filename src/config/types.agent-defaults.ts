@@ -171,6 +171,12 @@ export type AgentDefaultsConfig = {
   contextPruning?: AgentContextPruningConfig;
   /** Compaction tuning and pre-compaction memory flush behavior. */
   compaction?: AgentCompactionConfig;
+  /** Tool description compression for token cost optimization. */
+  toolCompression?: ToolCompressionConfig;
+  /** Request cache configuration for caching LLM responses. */
+  requestCache?: RequestCacheConfig;
+  /** Multi-channel deduplication configuration. */
+  deduplication?: DeduplicationConfig;
   /** Embedded Pi runner hardening and compatibility controls. */
   embeddedPi?: {
     /**
@@ -342,4 +348,52 @@ export type AgentCompactionMemoryFlushConfig = {
   prompt?: string;
   /** System prompt appended for the memory flush turn. */
   systemPrompt?: string;
+};
+
+/**
+ * Request cache configuration for caching LLM responses
+ */
+export type RequestCacheConfig = {
+  /** Enable request caching (default: false) */
+  enabled?: boolean;
+  /** Cache TTL in milliseconds (default: 1 hour) */
+  ttlMs?: number;
+  /** Maximum cache entries (default: 10000) */
+  maxSize?: number;
+  /** Enable verbose logging */
+  verbose?: boolean;
+};
+
+/**
+ * Multi-channel deduplication configuration
+ */
+export type DeduplicationConfig = {
+  /** Enable multi-channel deduplication (default: false) */
+  enabled?: boolean;
+  /** Deduplication window in milliseconds (default: 5 minutes) */
+  windowMs?: number;
+  /** Maximum entries to track (default: 5000) */
+  maxEntries?: number;
+  /** Enable content-based deduplication (default: true) */
+  contentHash?: boolean;
+  /** Enable cross-platform deduplication (default: false) */
+  crossPlatform?: boolean;
+  /** Minimum content length for deduplication (default: 20 chars) */
+  minLength?: number;
+  /** Enable verbose logging */
+  verbose?: boolean;
+};
+
+/**
+ * Tool description compression configuration
+ */
+export type ToolCompressionConfig = {
+  /** Enable tool description compression (default: true) */
+  enabled?: boolean;
+  /** Use short format for common tools (default: true) */
+  useShortFormat?: boolean;
+  /** Remove verbose examples from descriptions (default: true) */
+  removeExamples?: boolean;
+  /** Truncate long descriptions to this length (0 = no limit, default: 200) */
+  maxLength?: number;
 };

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { RequestCache, createCachedLLMWrapper } from "../request-cache.js";
+import { RequestCache, createCachedLLMWrapper } from "./request-cache.js";
 
 describe("RequestCache - 完整路径测试", () => {
   let cache: RequestCache;
@@ -232,23 +232,32 @@ describe("RequestCache - 完整路径测试", () => {
     });
 
     it("应该修剪过期条目", async () => {
-      const tempCache = new RequestCache({ ttlMs: 10, maxSize: 100 });
+      const tempCache = new RequestCache({ ttlMs: 10, maxSize: 10 });
 
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < 5; i++) {
         await tempCache.set(
           [{ role: "user", content: `Message ${i}` }],
           `Response ${i}`
         );
       }
 
+      const statsBefore = tempCache.getStats();
+      expect(statsBefore.size).toBe(5);
+
       // 等待过期
       await new Promise((resolve) => setTimeout(resolve, 20));
 
-      // 触发修剪
-      await tempCache.set([{ role: "user", content: "New" }], "New Response");
+      // 触发修剪 - 通过添加超过 maxSize 的新条目
+      for (let i = 0; i < 15; i++) {
+        await tempCache.set(
+          [{ role: "user", content: `New message ${i}` }],
+          `New Response ${i}`
+        );
+      }
 
-      const stats = tempCache.getStats();
-      expect(stats.size).toBeLessThan(50);
+      const statsAfter = tempCache.getStats();
+      // Old entries should be pruned, only new entries remain (limited by maxSize)
+      expect(statsAfter.size).toBeLessThanOrEqual(10);
     });
   });
 

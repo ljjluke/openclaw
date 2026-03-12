@@ -23,7 +23,6 @@ export default defineConfig({
       "src/browser/**",
       "src/line/**",
       "src/agents/**",
-      "src/auto-reply/**",
       "src/commands/**",
     ],
   },

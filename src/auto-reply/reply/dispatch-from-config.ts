@@ -26,6 +26,7 @@ import { getGlobalHookRunner } from "../../plugins/hook-runner-global.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
 import { maybeApplyTtsToPayload, normalizeTtsAutoMode, resolveTtsConfig } from "../../tts/tts.js";
 import { INTERNAL_MESSAGE_CHANNEL, normalizeMessageChannel } from "../../utils/message-channel.js";
+import { getGlobalMultiChannelDedupe } from "./multichannel-dedupe.js";
 import { getReplyFromConfig } from "../reply.js";
 import type { FinalizedMsgContext } from "../templating.js";
 import type { GetReplyOptions, ReplyPayload } from "../types.js";
@@ -168,6 +169,25 @@ export async function dispatchReplyFromConfig(params: {
   if (shouldSkipDuplicateInbound(ctx)) {
     recordProcessed("skipped", { reason: "duplicate" });
     return { queuedFinal: false, counts: dispatcher.getQueuedCounts() };
+  }
+
+  // Multi-channel deduplication check (cost optimization)
+  const dedupeEnabled = cfg.agents?.defaults?.deduplication?.enabled ?? false;
+  if (dedupeEnabled && sessionKey) {
+    const dedupe = getGlobalMultiChannelDedupe(cfg.agents?.defaults?.deduplication);
+    const messages = [{ role: "user", content: ctx.Body || ctx.BodyForCommands || "" }];
+    const duplicateResponse = await dedupe.check(messages, {
+      provider: ctx.Provider || "unknown",
+      accountId: ctx.AccountId || "default",
+      sessionId: ctx.SessionKey || "unknown",
+      messageId: ctx.MessageSid || ctx.MessageSidFirst || "unknown",
+    });
+
+    if (duplicateResponse) {
+      logVerbose(`[cost-optimization] multi-channel dedupe: reusing cached response`);
+      recordProcessed("skipped", { reason: "multi-channel-duplicate" });
+      return { queuedFinal: false, counts: dispatcher.getQueuedCounts() };
+    }
   }
 
   const sessionStoreEntry = resolveSessionStoreLookup(ctx, cfg);
@@ -599,6 +619,27 @@ export async function dispatchReplyFromConfig(params: {
 
     const counts = dispatcher.getQueuedCounts();
     counts.final += routedFinalCount;
+    
+    // Record response for multi-channel deduplication (cost optimization)
+    if (dedupeEnabled && sessionKey) {
+      try {
+        const dedupe = getGlobalMultiChannelDedupe(cfg.agents?.defaults?.deduplication);
+        const messages = [{ role: "user", content: ctx.Body || ctx.BodyForCommands || "" }];
+        // Note: We don't have the actual LLM response text here, but we record the context
+        // for future deduplication checks. The actual response caching happens in the LLM layer.
+        await dedupe.record(messages, "processed", {
+          provider: ctx.Provider || "unknown",
+          accountId: ctx.AccountId || "default",
+          sessionId: ctx.SessionKey || "unknown",
+          messageId: ctx.MessageSid || ctx.MessageSidFirst || "unknown",
+        });
+      } catch (err) {
+        logVerbose(
+          `[cost-optimization] failed to record multi-channel dedupe: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    
     recordProcessed("completed");
     markIdle("message_completed");
     return { queuedFinal, counts };

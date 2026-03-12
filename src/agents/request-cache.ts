@@ -86,13 +86,19 @@ export class RequestCache {
 
   /**
    * Check if a request is in the cache
-   * 
+   *
    * @param messages - The request messages
    * @returns Cached result or null if not found/expired
    */
   async check(
     messages: Array<{ role?: string; content?: unknown }>,
   ): Promise<CachedResult | null> {
+    // Handle null/undefined messages
+    if (!messages || !Array.isArray(messages)) {
+      this.missCount++;
+      return null;
+    }
+
     const key = this.generateKey(messages);
     
     // Check dedupe cache first (faster)

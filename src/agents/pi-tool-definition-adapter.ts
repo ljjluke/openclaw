@@ -14,6 +14,7 @@ import {
 } from "./pi-tools.before-tool-call.js";
 import { normalizeToolName } from "./tool-policy.js";
 import { jsonResult } from "./tools/common.js";
+import { compressToolDescription } from "./cost-optimization-config.js";
 
 type AnyAgentTool = AgentTool;
 
@@ -139,10 +140,14 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
     const name = tool.name || "tool";
     const normalizedName = normalizeToolName(name);
     const beforeHookWrapped = isToolWrappedWithBeforeToolCallHook(tool);
+    
+    // Compress tool description to save tokens
+    const compressedDescription = compressToolDescription(name, tool.description ?? "");
+    
     return {
       name,
       label: tool.label ?? name,
-      description: tool.description ?? "",
+      description: compressedDescription,
       parameters: tool.parameters,
       execute: async (...args: ToolExecuteArgs): Promise<AgentToolResult<unknown>> => {
         const { toolCallId, params, onUpdate, signal } = splitToolExecuteArgs(args);

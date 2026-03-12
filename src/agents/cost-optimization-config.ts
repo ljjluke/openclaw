@@ -180,11 +180,11 @@ export const DESCRIPTION_PATTERNS_TO_SHORTEN = [
     replacement: "→ ",
   },
   {
-    pattern: /Example:\s*[\s\S]*?(?=\n\n|\n[A-Z]|\Z)/gi,
+    pattern: /Example:\s*[^\n]*(\n(?!\n)|$)/gi,
     replacement: "",
   },
   {
-    pattern: /For example:\s*[\s\S]*?(?=\n\n|\n[A-Z]|\Z)/gi,
+    pattern: /For example:\s*[^\n]*(\n(?!\n)|$)/gi,
     replacement: "",
   },
 ];
@@ -269,16 +269,23 @@ export function getRecommendedCompactionModel(provider: string): string {
 
 /**
  * Compresses a tool description using predefined mappings and patterns
- * 
+ *
  * @param toolName - The name of the tool
  * @param description - The original description
  * @returns Compressed description
  */
 export function compressToolDescription(toolName: string, description: string): string {
-  // Check for predefined mapping first
-  const mapped = TOOL_DESCRIPTION_MAP[toolName];
-  if (mapped) {
-    return mapped;
+  // Check for predefined mapping first (case-insensitive)
+  const lowerToolName = toolName.toLowerCase();
+  for (const [key, value] of Object.entries(TOOL_DESCRIPTION_MAP)) {
+    if (key.toLowerCase() === lowerToolName) {
+      return value;
+    }
+  }
+
+  // Handle null/undefined descriptions
+  if (description == null || typeof description !== "string") {
+    return "";
   }
 
   let compressed = description;
@@ -314,11 +321,14 @@ export function simpleHash(content: string): string {
 
 /**
  * Normalizes message content for comparison and deduplication
- * 
+ *
  * @param messages - Array of message objects
  * @returns Normalized content string
  */
 export function normalizeMessagesForComparison(messages: Array<{ role?: string; content?: unknown }>): string {
+  if (!Array.isArray(messages)) {
+    return "";
+  }
   return messages
     .map((msg) => {
       const role = msg.role ?? "unknown";
